@@ -1,0 +1,103 @@
+version: '3.8'
+
+services:
+  # MongoDB Database
+  mongodb:
+    image: mongo:7.0
+    container_name: crypto-bot-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      - MONGO_INITDB_DATABASE=crypto_bot_db
+    networks:
+      - crypto-bot-network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # FastAPI Backend
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: crypto-bot-backend
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./backend:/app
+    environment:
+      - MONGO_URL=mongodb://mongodb:27017
+      - DB_NAME=crypto_bot_db
+      - CORS_ORIGINS=*
+      - EMERGENT_LLM_KEY=${EMERGENT_LLM_KEY}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - CRYPTOPANIC_API_KEY=${CRYPTOPANIC_API_KEY}
+      - NEWSAPI_KEY=${NEWSAPI_KEY}
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - crypto-bot-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/api/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Telegram Bot Service
+  telegram-bot:
+    build:
+      context: .
+      dockerfile: Dockerfile.bot
+    container_name: crypto-bot-telegram
+    restart: unless-stopped
+    volumes:
+      - ./backend:/app
+    environment:
+      - MONGO_URL=mongodb://mongodb:27017
+      - DB_NAME=crypto_bot_db
+      - EMERGENT_LLM_KEY=${EMERGENT_LLM_KEY}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - CRYPTOPANIC_API_KEY=${CRYPTOPANIC_API_KEY}
+      - NEWSAPI_KEY=${NEWSAPI_KEY}
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    networks:
+      - crypto-bot-network
+
+  # React Frontend (Admin Dashboard)
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: crypto-bot-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - REACT_APP_BACKEND_URL=http://localhost:8001
+      - WDS_SOCKET_PORT=0
+    depends_on:
+      - backend
+    networks:
+      - crypto-bot-network
+
+networks:
+  crypto-bot-network:
+    driver: bridge
+
+volumes:
+  mongodb_data:
+    driver: local
