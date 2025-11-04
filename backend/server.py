@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter
+from fastapi import FastAPI, APIRouter, HTTPException
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -6,7 +6,7 @@ import os
 import logging
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict
-from typing import List
+from typing import List, Optional
 import uuid
 from datetime import datetime, timezone
 
@@ -37,10 +37,18 @@ class StatusCheck(BaseModel):
 class StatusCheckCreate(BaseModel):
     client_name: str
 
+class BotStats(BaseModel):
+    total_users: int
+    premium_users: int
+    free_users: int
+    total_revenue: float
+    recent_users: List[dict]
+
+
 # Add your routes to the router instead of directly to app
 @api_router.get("/")
 async def root():
-    return {"message": "Hello World"}
+    return {"message": "Crypto Analysis Bot API"}
 
 @api_router.post("/status", response_model=StatusCheck)
 async def create_status_check(input: StatusCheckCreate):
@@ -65,6 +73,64 @@ async def get_status_checks():
             check['timestamp'] = datetime.fromisoformat(check['timestamp'])
     
     return status_checks
+
+@api_router.get("/bot/stats")
+async def get_bot_stats():
+    """Get bot statistics"""
+    try:
+        # Total users
+        total_users = await db.users.count_documents({})
+        
+        # Premium users
+        premium_subs = await db.subscriptions.find({}).to_list(1000)
+        active_premium = 0
+        total_revenue = 0
+        
+        for sub in premium_subs:
+            expires_at = sub.get('expires_at')
+            if expires_at:
+                if isinstance(expires_at, str):
+                    expires_at = datetime.fromisoformat(expires_at)
+                if expires_at > datetime.now(timezone.utc):
+                    active_premium += 1
+                    # Each subscription is $5
+                    total_revenue += 5
+        
+        free_users = total_users - active_premium
+        
+        # Recent users
+        recent_users = await db.users.find({}, {"_id": 0}).sort("created_at", -1).limit(10).to_list(10)
+        
+        return {
+            "total_users": total_users,
+            "premium_users": active_premium,
+            "free_users": free_users,
+            "total_revenue": total_revenue,
+            "recent_users": recent_users
+        }
+    except Exception as e:
+        logging.error(f"Error fetching bot stats: {e}")
+        raise HTTPException(status_code=500, detail="Error fetching statistics")
+
+@api_router.get("/bot/users")
+async def get_bot_users():
+    """Get all bot users"""
+    try:
+        users = await db.users.find({}, {"_id": 0}).to_list(1000)
+        return users
+    except Exception as e:
+        logging.error(f"Error fetching users: {e}")
+        raise HTTPException(status_code=500, detail="Error fetching users")
+
+@api_router.get("/bot/subscriptions")
+async def get_subscriptions():
+    """Get all subscriptions"""
+    try:
+        subscriptions = await db.subscriptions.find({}, {"_id": 0}).to_list(1000)
+        return subscriptions
+    except Exception as e:
+        logging.error(f"Error fetching subscriptions: {e}")
+        raise HTTPException(status_code=500, detail="Error fetching subscriptions")
 
 # Include the router in the main app
 app.include_router(api_router)
