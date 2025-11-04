@@ -14,6 +14,11 @@ class PaymentService:
     async def check_subscription(self, telegram_id):
         """Check if user has active premium subscription"""
         try:
+            # Check testing mode first
+            if config.is_premium_test_user(telegram_id):
+                logger.info(f"User {telegram_id} has free premium (testing mode)")
+                return True
+            
             subscription = await self.db.subscriptions.find_one({"telegram_id": telegram_id})
             
             if not subscription:
