@@ -331,10 +331,40 @@ docker-compose logs -f
 
 ---
 
+---
+
+## Frontend Build Error (yarn install)
+
+### Error:
+```
+=> ERROR [4/5] RUN yarn install --frozen-lockfile
+```
+
+### Fix Applied:
+Changed from `--frozen-lockfile` to `--network-timeout 100000` for better reliability:
+
+**Before:**
+```dockerfile
+RUN yarn install --frozen-lockfile
+```
+
+**After:**
+```dockerfile
+RUN yarn install --network-timeout 100000
+```
+
+This allows yarn to:
+- Handle network timeouts better
+- Work even if yarn.lock has minor mismatches
+- Complete installations more reliably
+
+---
+
 ## Summary
 
 ✅ **Fixed requirements.txt** - Reduced from 120+ to 25 packages  
-✅ **Updated Dockerfiles** - Added custom package index  
+✅ **Updated backend Dockerfiles** - Added custom package index  
+✅ **Fixed frontend Dockerfile** - Removed frozen-lockfile requirement  
 ✅ **Created pre-flight check** - Verify setup before building  
 ✅ **Added troubleshooting docs** - Complete error solutions  
 
