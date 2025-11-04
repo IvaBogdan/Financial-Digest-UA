@@ -1,6 +1,6 @@
 import logging
+import os
 from datetime import datetime, timezone, timedelta
-from config import config
 
 logger = logging.getLogger(__name__)
 
@@ -11,11 +11,26 @@ class PaymentService:
     def __init__(self, db):
         self.db = db
     
+    def _is_premium_test_user(self, telegram_id):
+        """Check if user should get free premium for testing"""
+        # Check if testing mode is enabled for all users
+        testing_mode = os.getenv('PREMIUM_TESTING_MODE', 'false').lower() == 'true'
+        if testing_mode:
+            return True
+        
+        # Check if user is in test users list
+        test_users_str = os.getenv('PREMIUM_TEST_USERS', '')
+        if test_users_str:
+            test_users = [int(uid.strip()) for uid in test_users_str.split(',') if uid.strip().isdigit()]
+            return telegram_id in test_users
+        
+        return False
+    
     async def check_subscription(self, telegram_id):
         """Check if user has active premium subscription"""
         try:
             # Check testing mode first
-            if config.is_premium_test_user(telegram_id):
+            if self._is_premium_test_user(telegram_id):
                 logger.info(f"User {telegram_id} has free premium (testing mode)")
                 return True
             
