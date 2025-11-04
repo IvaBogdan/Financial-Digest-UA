@@ -425,10 +425,14 @@ Try /analyze BTC or just chat with me!""",
         
         # Schedule daily digest (runs at 9 AM UTC)
         job_queue = self.application.job_queue
-        job_queue.run_daily(
-            self.schedule_daily_tasks,
-            time=datetime.strptime("09:00", "%H:%M").time()
-        )
+        if job_queue:
+            job_queue.run_daily(
+                self.schedule_daily_tasks,
+                time=datetime.strptime("09:00", "%H:%M").time()
+            )
+            logger.info("Daily digest scheduled for 9 AM UTC")
+        else:
+            logger.warning("JobQueue not available - daily digest will not be scheduled")
         
         logger.info("Bot started successfully")
         self.application.run_polling(allowed_updates=Update.ALL_TYPES)
