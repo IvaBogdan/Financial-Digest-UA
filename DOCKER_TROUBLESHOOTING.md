@@ -296,6 +296,34 @@ docker image prune -a
 
 ---
 
+### Error: "yarn install --frozen-lockfile" failed
+
+**Symptoms:**
+```
+=> ERROR [4/5] RUN yarn install --frozen-lockfile
+```
+
+**Solution:**
+```bash
+# The Dockerfile has been updated to handle this
+# Just rebuild:
+docker-compose build --no-cache frontend
+
+# If still fails, try without cache:
+docker-compose build --no-cache --progress=plain frontend
+```
+
+**Alternative:** If you need to regenerate yarn.lock:
+```bash
+cd frontend
+rm yarn.lock
+yarn install
+cd ..
+docker-compose build frontend
+```
+
+---
+
 ### Error: "failed to solve with frontend dockerfile.v0"
 
 **Solution:**
