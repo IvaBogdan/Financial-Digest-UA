@@ -4,18 +4,10 @@ FROM node:18-alpine
 WORKDIR /app
 
 # Copy package files
-COPY frontend/package.json ./
-
-# Copy yarn.lock if it exists
-COPY frontend/yarn.lock* ./
+COPY frontend/package.json frontend/yarn.lock ./
 
 # Install dependencies
-# Use --frozen-lockfile only if yarn.lock exists
-RUN if [ -f yarn.lock ]; then \
-        yarn install --frozen-lockfile; \
-    else \
-        yarn install; \
-    fi
+RUN yarn install --network-timeout 100000
 
 # Copy frontend code
 COPY frontend/ .
