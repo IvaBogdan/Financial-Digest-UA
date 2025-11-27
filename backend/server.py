@@ -50,6 +50,10 @@ class BotStats(BaseModel):
 async def root():
     return {"message": "Crypto Analysis Bot API"}
 
+@app.get("/healthz")
+async def healthz():
+    return {"ok": True}
+
 @api_router.post("/status", response_model=StatusCheck)
 async def create_status_check(input: StatusCheckCreate):
     status_dict = input.model_dump()

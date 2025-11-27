@@ -435,6 +435,7 @@ Try /analyze BTC or just chat with me!""",
             logger.warning("JobQueue not available - daily digest will not be scheduled")
         
         logger.info("Bot started successfully")
+        logger.info("Version 1.0.0")
         self.application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 

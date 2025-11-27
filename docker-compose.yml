@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   # MongoDB Database
@@ -45,10 +45,15 @@ services:
     networks:
       - crypto-bot-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8001/api/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      test:
+        [
+          "CMD-SHELL",
+          'python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen(''http://127.0.0.1:8001/healthz'', timeout=2).getcode()==200 else 1)"',
+        ]
+      interval: 15s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
 
   # Telegram Bot Service
   telegram-bot:
